@@ -369,7 +369,14 @@ The **Orchestrator** executes the deployment:
    - Terraform apply (create resources)
    - Capture outputs (IPs, endpoints)
 
-5. **Application Deployment**
+5. **Automatic Code Adjustments** ⭐
+   - Replaces `localhost` with deployed VM's public IP
+   - Converts hardcoded URLs to relative paths
+   - Scans HTML, JavaScript, TypeScript files
+   - **Minimal user intervention** - fully automated
+   - Addresses common deployment issues automatically
+
+6. **Application Deployment**
    - VM: SCP files, SSH commands, systemd service
    - Container: Docker build, push to registry, deploy
    - Kubernetes: Apply manifests, configure ingress

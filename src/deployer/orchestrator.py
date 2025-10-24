@@ -63,6 +63,16 @@ class DeploymentOrchestrator:
             tf_output = self._apply_terraform(tf_dir, requirements)
             self.log("✓ Infrastructure provisioned")
             
+            # Step 5.5: Get deployment info early for localhost fixing
+            compute = infrastructure['compute_resources']
+            temp_deployment_info = {
+                'instance_ip': tf_output.get('instance_public_ip', {}).get('value'),
+                'port': app_analysis.get('port', 5000)
+            }
+            
+            # Step 5.6: Fix localhost references automatically (minimal intervention)
+            self._fix_localhost_references(repo_path, temp_deployment_info)
+            
             # Step 6: Deploy application to infrastructure
             deployment_info = self._deploy_application(
                 repo_path, app_analysis, infrastructure, tf_output
@@ -112,6 +122,57 @@ class DeploymentOrchestrator:
             raise ValueError(f"Invalid repository source: {repo_source}")
         
         return repo_dir
+    
+    def _fix_localhost_references(self, repo_path: Path, deployment_info: Dict):
+        """
+        Automatically replace localhost references with actual deployment URLs
+        This enables minimal user intervention as per assessment requirements
+        """
+        public_ip = deployment_info.get('instance_ip')
+        port = deployment_info.get('port', 5000)
+        
+        if not public_ip:
+            self.log("⚠️ No public IP available, skipping localhost fix")
+            return
+        
+        self.log(f"Fixing localhost references to use {public_ip}:{port}...")
+        
+        # Patterns to replace
+        patterns = [
+            (f'http://localhost:{port}', ''),  # Replace with relative path
+            (f'http://127.0.0.1:{port}', ''),  # Replace with relative path  
+            ('http://localhost:5000', ''),     # Common default
+            ('http://127.0.0.1:5000', ''),     # Common default
+        ]
+        
+        # File extensions to check
+        extensions = ['.html', '.js', '.jsx', '.ts', '.tsx', '.vue']
+        
+        fixed_count = 0
+        
+        for ext in extensions:
+            for file_path in repo_path.rglob(f'*{ext}'):
+                try:
+                    content = file_path.read_text(encoding='utf-8')
+                    original_content = content
+                    
+                    # Apply all replacement patterns
+                    for old_pattern, new_pattern in patterns:
+                        content = content.replace(old_pattern, new_pattern)
+                    
+                    # Write back if changed
+                    if content != original_content:
+                        file_path.write_text(content, encoding='utf-8')
+                        fixed_count += 1
+                        self.log(f"  ✓ Fixed {file_path.name}")
+                        
+                except Exception as e:
+                    self.log(f"  ⚠️ Could not process {file_path.name}: {e}")
+        
+        if fixed_count > 0:
+            self.log(f"✓ Fixed localhost references in {fixed_count} file(s)")
+        else:
+            self.log("No localhost references found to fix")
     
     def _build_application(self, repo_path: Path, app_analysis: Dict):
         """Build application if build command exists"""
