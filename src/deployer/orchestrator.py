@@ -370,7 +370,11 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
             
         except subprocess.CalledProcessError as e:
             self.log(f"⚠️ Deployment to VM partially failed: {e}")
+            if hasattr(e, 'stderr') and e.stderr:
+                self.log(f"Error details: {e.stderr.decode() if isinstance(e.stderr, bytes) else e.stderr}")
+            self.log(f"Return code: {e.returncode}")
             self.log("Note: Infrastructure is created but application may need manual setup")
+            self.log(f"You can SSH to debug: gcloud compute ssh {instance_name} --zone={gcp_zone} --project={gcp_project}")
         
         return {
             'type': 'vm',
@@ -447,12 +451,24 @@ sudo systemctl stop app.service 2>/dev/null || true
 if [ -f requirements.txt ]; then
     echo "Installing Python dependencies..."
     pip3 install -r requirements.txt
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to install dependencies"
+        exit 1
+    fi
+else
+    echo "Warning: No requirements.txt found"
 fi
 
 # Set Flask environment variables if needed
 export FLASK_APP=app.py
 export FLASK_ENV=production
 export PORT={port}
+
+# Verify Python application files exist
+if [ ! -f app.py ] && [ ! -f app/__init__.py ]; then
+    echo "Error: No Python application entry point found"
+    exit 1
+fi
 
 '''
         elif language in ['javascript', 'typescript']:
@@ -501,9 +517,39 @@ echo "Deployment completed!"
         """Verify deployment is successful"""
         self.log("Verifying deployment...")
         
-        # In production, would make HTTP request to verify app is responding
-        # For now, just log success
-        self.log("Deployment verification would check HTTP endpoint")
+        url = deployment_info.get('url')
+        if not url:
+            self.log("No URL available for verification")
+            return
+        
+        try:
+            import requests
+            import time
+            
+            # Try to connect to the application (5 attempts with 10 second intervals)
+            for attempt in range(5):
+                try:
+                    self.log(f"Checking application at {url}... (attempt {attempt + 1}/5)")
+                    response = requests.get(url, timeout=5)
+                    
+                    if response.status_code == 200:
+                        self.log(f"✓ Application is responding successfully (HTTP {response.status_code})")
+                        return
+                    else:
+                        self.log(f"⚠️ Application returned HTTP {response.status_code}")
+                        
+                except requests.exceptions.RequestException as e:
+                    if attempt < 4:
+                        self.log(f"Connection failed, waiting 10 seconds before retry...")
+                        time.sleep(10)
+                    else:
+                        self.log(f"⚠️ Could not connect to application: {e}")
+            
+            self.log("⚠️ Application may not be fully started yet. Check manually or wait a few minutes.")
+            
+        except ImportError:
+            self.log("Note: Install 'requests' library for automatic health checks")
+            self.log(f"Manual verification: curl {url}")
     
     def _get_or_generate_ssh_key(self) -> str:
         """Get or generate SSH public key"""
