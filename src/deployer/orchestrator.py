@@ -464,9 +464,18 @@ export FLASK_APP=app.py
 export FLASK_ENV=production
 export PORT={port}
 
+# Check if app files are in a subdirectory
+if [ -d app ] && [ -f app/app.py ]; then
+    echo "Found application in 'app' subdirectory"
+    cd app
+    export FLASK_APP=app.py
+fi
+
 # Verify Python application files exist
 if [ ! -f app.py ] && [ ! -f app/__init__.py ]; then
-    echo "Error: No Python application entry point found"
+    echo "Error: No Python application entry point found in $(pwd)"
+    echo "Directory contents:"
+    ls -la
     exit 1
 fi
 
