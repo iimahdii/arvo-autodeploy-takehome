@@ -213,39 +213,63 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
         """Initialize and apply Terraform"""
         
         self.log("Initializing Terraform...")
+        
+        # Prepare environment variables for Terraform
+        tf_env = os.environ.copy()
+        
+        # Ensure Google credentials are available for GCP
+        cloud_provider = requirements.get('cloud_provider', 'aws').lower()
+        if cloud_provider == 'gcp':
+            google_creds = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+            if google_creds:
+                tf_env['GOOGLE_APPLICATION_CREDENTIALS'] = google_creds
+                self.log(f"Using Google credentials from: {google_creds}")
+        
         tf = Terraform(working_dir=str(tf_dir))
         
         # Initialize
-        return_code, stdout, stderr = tf.init()
+        return_code, stdout, stderr = tf.init(capture_output=False)
         if return_code != 0:
             raise Exception(f"Terraform init failed: {stderr}")
         
         self.log("Terraform initialized")
         
+        # Prepare Terraform variables
+        tf_vars = {
+            'app_name': 'autodeploy-app',
+        }
+        
+        # Add cloud provider specific variables
+        if cloud_provider == 'gcp':
+            # Get GCP variables from environment
+            gcp_project_id = os.environ.get('GCP_PROJECT_ID')
+            gcp_region = requirements.get('region', os.environ.get('GCP_REGION', 'us-central1'))
+            
+            if not gcp_project_id:
+                raise Exception("GCP_PROJECT_ID environment variable is required for GCP deployments")
+            
+            tf_vars.update({
+                'gcp_project_id': gcp_project_id,
+                'gcp_region': gcp_region,
+            })
+        elif cloud_provider == 'aws':
+            # AWS variables
+            tf_vars.update({
+                'aws_region': requirements.get('region', os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')),
+            })
+        
         # Plan
         self.log("Planning infrastructure changes...")
-        return_code, stdout, stderr = tf.plan(
-            var={
-                'app_name': 'autodeploy-app',
-                'ssh_public_key': self._get_or_generate_ssh_key(),
-                'db_password': self._generate_db_password(),
-            }
-        )
+        return_code, stdout, stderr = tf.plan(var=tf_vars, capture_output=False)
         
-        if return_code != 0:
+        # Terraform plan returns: 0 = no changes, 1 = error, 2 = changes present
+        if return_code not in [0, 2]:
             self.log(f"Terraform plan output: {stdout}")
             raise Exception(f"Terraform plan failed: {stderr}")
         
         # Apply
         self.log("Applying infrastructure changes (this may take several minutes)...")
-        return_code, stdout, stderr = tf.apply(
-            skip_plan=True,
-            var={
-                'app_name': 'autodeploy-app',
-                'ssh_public_key': self._get_or_generate_ssh_key(),
-                'db_password': self._generate_db_password(),
-            }
-        )
+        return_code, stdout, stderr = tf.apply(skip_plan=True, var=tf_vars, capture_output=False)
         
         if return_code != 0:
             raise Exception(f"Terraform apply failed: {stderr}")

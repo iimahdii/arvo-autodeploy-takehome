@@ -34,6 +34,8 @@ class TerraformGenerator:
         # Generate provider-specific files
         if provider == 'aws':
             self._generate_aws_specific(infrastructure, app_analysis)
+        elif provider == 'gcp':
+            self._generate_gcp_specific(infrastructure, app_analysis)
         
         return self.output_dir
     
@@ -578,6 +580,13 @@ output "database_name" {
         # Generate user_data.sh for EC2
         user_data = self._generate_user_data(app_analysis)
         (self.output_dir / 'user_data.sh').write_text(user_data)
+    
+    def _generate_gcp_specific(self, infrastructure: Dict, app_analysis: Dict):
+        """Generate GCP-specific files"""
+        
+        # Generate startup_script.sh for GCE
+        startup_script = self._generate_user_data(app_analysis)
+        (self.output_dir / 'startup_script.sh').write_text(startup_script)
     
     def _generate_user_data(self, app_analysis: Dict) -> str:
         """Generate user data script for EC2"""
