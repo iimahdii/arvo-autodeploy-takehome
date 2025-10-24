@@ -457,7 +457,7 @@ sudo systemctl stop app.service 2>/dev/null || true
             script += f'''# Install Python dependencies
 if [ -f requirements.txt ]; then
     echo "Installing Python dependencies..."
-    pip3 install -r requirements.txt
+    sudo pip3 install -r requirements.txt
     if [ $? -ne 0 ]; then
         echo "Error: Failed to install dependencies"
         exit 1
