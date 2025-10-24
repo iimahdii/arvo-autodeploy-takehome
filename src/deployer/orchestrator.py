@@ -433,6 +433,13 @@ sudo cp -r /tmp/app/* /opt/app/
 sudo chown -R ubuntu:ubuntu /opt/app
 cd /opt/app
 
+# Fix: If app files are in /opt/app/app, move them up
+if [ -d /opt/app/app ] && [ -f /opt/app/app/app.py ]; then
+    echo "Moving app files from /opt/app/app/ to /opt/app/"
+    sudo mv /opt/app/app/* /opt/app/
+    sudo rmdir /opt/app/app
+fi
+
 # Stop existing service if running
 sudo systemctl stop app.service 2>/dev/null || true
 
