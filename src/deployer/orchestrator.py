@@ -335,14 +335,16 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
             
             # Copy repository to VM using gcloud scp
             self.log(f"Copying application files to VM...")
+            # Copy contents of repo_path, not the directory itself
             scp_cmd = [
                 'gcloud', 'compute', 'scp',
                 '--recurse',
                 '--zone', gcp_zone,
                 '--project', gcp_project,
-                str(repo_path), f'{instance_name}:/tmp/app'
+                str(repo_path) + '/*', f'{instance_name}:/tmp/app/'
             ]
-            subprocess.run(scp_cmd, check=True, capture_output=True)
+            # Note: Using shell=True to expand the wildcard
+            subprocess.run(' '.join(scp_cmd), shell=True, check=True, capture_output=True)
             self.log("✓ Files copied successfully")
             
             # Copy deployment script
