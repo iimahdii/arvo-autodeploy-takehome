@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Dict, Optional
 from git import Repo
 import tempfile
+import time
+import random
+import string
 from python_terraform import Terraform
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -22,6 +25,14 @@ class DeploymentOrchestrator:
         self.work_dir = Path(work_dir) if work_dir else Path(tempfile.mkdtemp())
         self.console = Console()
         self.deployment_log = []
+        # Generate unique deployment ID
+        self.deployment_id = self._generate_deployment_id()
+    
+    def _generate_deployment_id(self) -> str:
+        """Generate unique deployment identifier"""
+        timestamp = int(time.time())
+        random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+        return f"{timestamp}-{random_suffix}"
     
     def deploy(self, repo_source: str, app_analysis: Dict, infrastructure: Dict, 
                requirements: Dict) -> Dict:
@@ -234,9 +245,12 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
         
         self.log("Terraform initialized")
         
-        # Prepare Terraform variables
+        # Prepare Terraform variables with unique name
+        unique_app_name = f"autodeploy-{self.deployment_id}"
+        self.log(f"Deployment ID: {self.deployment_id}")
+        
         tf_vars = {
-            'app_name': 'autodeploy-app',
+            'app_name': unique_app_name,
         }
         
         # Add cloud provider specific variables
@@ -302,25 +316,64 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
         
         self.log(f"Deploying to VM at {instance_ip}")
         
-        # Create deployment script
-        deploy_script = self._create_vm_deploy_script(app_analysis)
-        script_path = self.work_dir / 'deploy.sh'
-        script_path.write_text(deploy_script)
-        script_path.chmod(0o755)
+        # Get GCP project and zone from environment
+        gcp_project = os.environ.get('GCP_PROJECT_ID', 'mahdi-mirhoseini')
+        gcp_zone = os.environ.get('GCP_REGION', 'us-central1') + '-a'
+        instance_name = f"autodeploy-{self.deployment_id}-instance"
         
-        # Copy files to VM (simplified - in production would use SCP/rsync)
-        self.log("Application files would be copied to VM via SCP")
-        self.log("Deployment script would be executed on VM via SSH")
+        # Wait for VM to be ready (SSH accessible)
+        self.log("Waiting for VM to be ready...")
+        import time
+        time.sleep(30)  # Give VM time to start up
         
-        # In a real implementation:
-        # - Use paramiko or subprocess to SCP files
-        # - SSH into instance and run deployment script
-        # - Set up systemd service
-        # - Start application
+        try:
+            # Create deployment script
+            deploy_script = self._create_vm_deploy_script(app_analysis)
+            script_path = self.work_dir / 'deploy.sh'
+            script_path.write_text(deploy_script)
+            script_path.chmod(0o755)
+            
+            # Copy repository to VM using gcloud scp
+            self.log(f"Copying application files to VM...")
+            scp_cmd = [
+                'gcloud', 'compute', 'scp',
+                '--recurse',
+                '--zone', gcp_zone,
+                '--project', gcp_project,
+                str(repo_path), f'{instance_name}:/tmp/app'
+            ]
+            subprocess.run(scp_cmd, check=True, capture_output=True)
+            self.log("✓ Files copied successfully")
+            
+            # Copy deployment script
+            scp_script_cmd = [
+                'gcloud', 'compute', 'scp',
+                '--zone', gcp_zone,
+                '--project', gcp_project,
+                str(script_path), f'{instance_name}:/tmp/deploy.sh'
+            ]
+            subprocess.run(scp_script_cmd, check=True, capture_output=True)
+            
+            # Execute deployment script on VM
+            self.log("Executing deployment script on VM...")
+            ssh_cmd = [
+                'gcloud', 'compute', 'ssh',
+                '--zone', gcp_zone,
+                '--project', gcp_project,
+                instance_name,
+                '--command', 'sudo bash /tmp/deploy.sh'
+            ]
+            result = subprocess.run(ssh_cmd, check=True, capture_output=True, text=True)
+            self.log("✓ Application deployed and started")
+            
+        except subprocess.CalledProcessError as e:
+            self.log(f"⚠️ Deployment to VM partially failed: {e}")
+            self.log("Note: Infrastructure is created but application may need manual setup")
         
         return {
             'type': 'vm',
             'instance_ip': instance_ip,
+            'instance_name': instance_name,
             'port': app_analysis.get('port'),
             'url': f"http://{instance_ip}:{app_analysis.get('port')}",
         }
@@ -360,34 +413,57 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
         """Create deployment script for VM"""
         
         language = app_analysis.get('language', '')
-        start_cmd = app_analysis.get('start_command', '')
+        framework = app_analysis.get('framework', '')
         port = app_analysis.get('port', 8000)
         
         script = '''#!/bin/bash
 set -e
 
-echo "Starting deployment..."
+echo "Starting application deployment..."
 
-# Navigate to app directory
+# Copy files from /tmp to /opt
+sudo mkdir -p /opt/app
+sudo cp -r /tmp/app/* /opt/app/
+sudo chown -R ubuntu:ubuntu /opt/app
 cd /opt/app
 
 # Stop existing service if running
-sudo systemctl stop app.service || true
+sudo systemctl stop app.service 2>/dev/null || true
 
 '''
         
         if language == 'python':
-            script += '''# Install Python dependencies
+            # Determine start command based on framework
+            if framework == 'flask':
+                start_cmd = 'python3 -m flask run --host=0.0.0.0 --port=' + str(port)
+            elif framework == 'django':
+                start_cmd = 'python3 manage.py runserver 0.0.0.0:' + str(port)
+            else:
+                start_cmd = 'python3 app.py'
+            
+            script += f'''# Install Python dependencies
 if [ -f requirements.txt ]; then
+    echo "Installing Python dependencies..."
     pip3 install -r requirements.txt
 fi
 
-'''
-        elif language in ['javascript', 'typescript']:
-            script += '''# Install Node dependencies
-npm install --production
+# Set Flask environment variables if needed
+export FLASK_APP=app.py
+export FLASK_ENV=production
+export PORT={port}
 
 '''
+        elif language in ['javascript', 'typescript']:
+            start_cmd = 'npm start'
+            script += '''# Install Node dependencies
+if [ -f package.json ]; then
+    echo "Installing Node.js dependencies..."
+    npm install --production
+fi
+
+'''
+        else:
+            start_cmd = 'python3 app.py'
         
         script += f'''# Create systemd service
 sudo tee /etc/systemd/system/app.service > /dev/null <<EOF
@@ -399,8 +475,11 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/opt/app
-ExecStart=/usr/bin/{start_cmd}
+Environment="PORT={port}"
+Environment="FLASK_APP=app.py"
+ExecStart=/bin/bash -c '{start_cmd}'
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
