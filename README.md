@@ -127,8 +127,8 @@ AutoDeploy is a sophisticated backend system that automates the entire process o
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
-cd Take-Home-Arvo
+git clone https://github.com/iimahdii/arvo-autodeploy-takehome.git
+cd arvo-autodeploy-takehome
 
 # Create virtual environment
 python3 -m venv venv
@@ -159,9 +159,10 @@ AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_DEFAULT_REGION=us-east-1
 
-# For GCP (optional)
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-GCP_PROJECT_ID=my-project-id
+# For GCP 
+GOOGLE_APPLICATION_CREDENTIALS=/Users/mahdi/.gcp/mahdi-mirhoseini-key.json
+GCP_PROJECT_ID=mahdi-mirhoseini
+GCP_PROJECT_NUMBER=64889010356
 ```
 
 ### First Deployment
@@ -185,7 +186,7 @@ python main.py deploy \
 
 ```bash
 python main.py deploy \
-  --repo https://github.com/your-username/flask-app \
+  --repo https://github.com/iimahdii/flask-app \
   --description "Deploy this Flask application on AWS using a t2.micro instance"
 ```
 
@@ -193,7 +194,7 @@ python main.py deploy \
 
 ```bash
 python main.py deploy \
-  --repo https://github.com/your-username/django-app \
+  --repo https://github.com/iimahdii/django-app \
   --description "Deploy this Django application on AWS with PostgreSQL database in us-west-2"
 ```
 
@@ -201,7 +202,7 @@ python main.py deploy \
 
 ```bash
 python main.py deploy \
-  --repo https://github.com/your-username/express-api \
+  --repo https://github.com/iimahdii/express-api \
   --description "Deploy this Express API on GCP with auto-scaling and load balancer"
 ```
 
@@ -209,7 +210,7 @@ python main.py deploy \
 
 ```bash
 python main.py deploy \
-  --repo https://github.com/your-username/microservice \
+  --repo https://github.com/iimahdii/microservice \
   --description "Deploy this containerized application on AWS ECS Fargate with Redis"
 ```
 
@@ -225,7 +226,7 @@ python main.py deploy \
 
 ```bash
 python main.py deploy \
-  --repo https://github.com/your-username/app \
+  --repo https://github.com/iimahdii/app \
   --description "Deploy on AWS" \
   --dry-run \
   --output-dir ./analysis
@@ -234,7 +235,7 @@ python main.py deploy \
 ### Example 7: Repository Analysis Only
 
 ```bash
-python main.py analyze https://github.com/your-username/app
+python main.py analyze https://github.com/iimahdii/app
 ```
 
 ## 🔍 How It Works
