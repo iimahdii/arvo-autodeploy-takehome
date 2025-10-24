@@ -57,3 +57,8 @@ Thumbs.db
 # Project specific
 cloned_repos/
 deployments/
+
+# Temporary/test folders
+metrics/
+cmd/
+monitoring/

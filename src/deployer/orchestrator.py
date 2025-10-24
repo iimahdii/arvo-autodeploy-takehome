@@ -321,10 +321,32 @@ CMD {start_cmd if start_cmd else "echo 'No start command defined'"}
         gcp_zone = os.environ.get('GCP_REGION', 'us-central1') + '-a'
         instance_name = f"autodeploy-{self.deployment_id}-instance"
         
-        # Wait for VM to be ready (SSH accessible)
+        # Wait for VM to be ready and startup script to complete
         self.log("Waiting for VM to be ready...")
         import time
-        time.sleep(30)  # Give VM time to start up
+        time.sleep(45)  # Give VM time to start up and run startup script
+        
+        # Wait for startup script to complete by checking if Python is installed
+        self.log("Waiting for VM startup script to complete...")
+        max_retries = 10
+        for i in range(max_retries):
+            try:
+                check_cmd = [
+                    'gcloud', 'compute', 'ssh',
+                    '--zone', gcp_zone,
+                    '--project', gcp_project,
+                    instance_name,
+                    '--command', 'which python3 && which pip3'
+                ]
+                result = subprocess.run(check_cmd, check=True, capture_output=True, timeout=10)
+                self.log("✓ VM startup complete, Python environment ready")
+                break
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                if i < max_retries - 1:
+                    self.log(f"Waiting for startup script... (attempt {i+1}/{max_retries})")
+                    time.sleep(10)
+                else:
+                    self.log("⚠️ Startup script may still be running, proceeding anyway...")
         
         try:
             # Create deployment script
