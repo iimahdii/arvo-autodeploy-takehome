@@ -1,0 +1,287 @@
+# GitHub Actions CI/CD Pipeline Example
+# 
+# This is an EXAMPLE pipeline for production use
+# Rename to ci.yml and configure secrets to enable
+#
+# Required GitHub Secrets:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - OPENAI_API_KEY (optional)
+
+name: AutoDeploy CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Job 1: Code Quality and Linting
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint black mypy flake8
+        pip install -r requirements.txt
+    
+    - name: Run Black (code formatting)
+      run: |
+        black --check .
+      continue-on-error: true
+    
+    - name: Run Flake8 (linting)
+      run: |
+        flake8 src/ --max-line-length=120 --exclude=__pycache__
+      continue-on-error: true
+    
+    - name: Run MyPy (type checking)
+      run: |
+        mypy src/ --ignore-missing-imports
+      continue-on-error: true
+
+  # Job 2: Unit Tests
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+    
+    - name: Run structure tests
+      run: |
+        python test_structure.py
+    
+    - name: Run unit tests (if they exist)
+      run: |
+        pytest tests/ --cov=src --cov-report=xml
+      continue-on-error: true
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+      continue-on-error: true
+
+  # Job 3: Security Scanning
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        pip install -r requirements.txt
+    
+    - name: Run Bandit (security linter)
+      run: |
+        bandit -r src/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Safety (dependency vulnerability check)
+      run: |
+        safety check --json
+      continue-on-error: true
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: bandit-report.json
+      continue-on-error: true
+
+  # Job 4: Integration Tests
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Test CLI commands
+      run: |
+        python main.py --help
+        echo "CLI help command works"
+    
+    - name: Test repository analysis
+      run: |
+        python main.py analyze https://github.com/Arvo-AI/hello_world
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      continue-on-error: true
+    
+    - name: Test dry-run deployment
+      run: |
+        python main.py deploy \
+          --repo https://github.com/Arvo-AI/hello_world \
+          --description "Deploy Flask app on AWS" \
+          --dry-run
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      continue-on-error: true
+
+  # Job 5: Build Documentation
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Validate markdown
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        config-file: '.github/markdown-link-check-config.json'
+      continue-on-error: true
+    
+    - name: Check documentation completeness
+      run: |
+        files=(
+          "README.md"
+          "ARCHITECTURE.md"
+          "DEMO.md"
+          "SOURCES.md"
+          "SECURITY.md"
+        )
+        for file in "${files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "Missing: $file"
+            exit 1
+          fi
+        done
+        echo "All documentation files present"
+
+  # Job 6: Docker Build (if Dockerfile exists)
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      run: |
+        docker build -t autodeploy:${{ github.sha }} .
+      if: hashFiles('Dockerfile') != ''
+      continue-on-error: true
+
+  # Job 7: Deploy to Staging (on main branch)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [integration, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.autodeploy.example.com
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    
+    - name: Deploy to staging
+      run: |
+        python main.py deploy \
+          --repo https://github.com/${{ github.repository }} \
+          --description "Deploy AutoDeploy staging environment" \
+          --output-dir ./staging-deployment
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      continue-on-error: true
+    
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: staging-deployment
+        path: ./staging-deployment
+
+  # Job 8: Notify
+  notify:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, integration, docs]
+    if: always()
+    
+    steps:
+    - name: Check workflow status
+      run: |
+        echo "Workflow completed"
+        echo "Status: ${{ job.status }}"
+    
+    # Add Slack/Discord notification here if needed
+    - name: Slack Notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: 'AutoDeploy CI/CD Pipeline'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      if: always() && secrets.SLACK_WEBHOOK != ''
+      continue-on-error: true
