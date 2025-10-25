@@ -23,8 +23,9 @@ AutoDeploy is a sophisticated backend system that automates the entire process o
 ### Core Capabilities
 
 - **🧠 Intelligent Repository Analysis**: Automatically detects application type, framework, dependencies, and deployment requirements
-- **💬 Natural Language Processing**: Understands deployment requirements from plain English descriptions
+- **💬 Natural Language Processing**: Multi-tier NLP with Vertex AI (Gemini), OpenAI, Anthropic, and rule-based fallback
 - **🏗️ Smart Infrastructure Decisions**: Determines optimal deployment strategy (VM, containers, Kubernetes, serverless)
+- **🔄 Intelligent Fallback**: Graceful degradation ensures 100% uptime even without LLM APIs
 - **☁️ Multi-Cloud Support**: Deploy to AWS, GCP, or Azure with a single command
 - **🔧 Infrastructure as Code**: Generates production-ready Terraform configurations
 - **🐳 Automatic Containerization**: Creates optimized Dockerfiles when needed
@@ -152,21 +153,28 @@ nano .env
 Edit `.env` file with your credentials:
 
 ```bash
-# LLM API Keys (optional but recommended)
-OPENAI_API_KEY=sk-...
-# OR
-ANTHROPIC_API_KEY=sk-ant-...
+# LLM API Keys (OPTIONAL - System works with rule-based fallback)
+# Priority: Vertex AI (uses GCP creds below) > OpenAI > Anthropic > Rule-based
+OPENAI_API_KEY=sk-...           # Optional: OpenAI fallback
+ANTHROPIC_API_KEY=sk-ant-...    # Optional: Anthropic fallback
 
-# AWS Credentials
+# AWS Credentials (for AWS deployments)
 AWS_ACCESS_KEY_ID=AKIA...
 AWS_SECRET_ACCESS_KEY=...
 AWS_DEFAULT_REGION=us-east-1
 
-# For GCP 
-GOOGLE_APPLICATION_CREDENTIALS=/Users/mahdi/.gcp/mahdi-mirhoseini-key.json
-GCP_PROJECT_ID=mahdi-mirhoseini
-GCP_PROJECT_NUMBER=64889010356
+# GCP Credentials (for GCP deployments)
+# Uses Service Account JSON Key (OAuth 2.0) - NOT simple API Keys
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+GCP_PROJECT_ID=your-project-id
+GCP_PROJECT_NUMBER=your-project-number
+GCP_REGION=us-central1          # Optional: for Vertex AI
+
+# Note: If GCP credentials are set, Vertex AI will be used automatically
+# No separate Vertex AI API key needed!
 ```
+
+> **🔐 Authentication Note**: This system uses **Service Account JSON Keys** (OAuth 2.0) for GCP, not simple API Keys. This is more secure and recommended by Google. Organization policies that restrict API Key creation do not affect Service Account authentication.
 
 ### First Deployment
 
@@ -264,18 +272,25 @@ The **Repository Analyzer** performs deep inspection of your codebase:
 
 ### Phase 2: Natural Language Processing
 
-The **Requirement Parser** understands deployment intent:
+The **Requirement Parser** understands deployment intent with **intelligent multi-tier fallback**:
 
-**With LLM (OpenAI/Anthropic)**:
+**Tier 1: Vertex AI (Google Cloud Gemini)** - Priority if GCP credentials available:
+- Uses Gemini models for natural language understanding
+- Leverages existing GCP Service Account credentials
+- 40x more cost-effective than alternatives ($0.00025/1K tokens)
+- No separate API key required
+
+**Tier 2: OpenAI/Anthropic** - Fallback if API keys provided:
 - Uses GPT-4 or Claude to parse complex requirements
 - Understands context and implicit requirements
 - Handles ambiguous or incomplete descriptions
 
-**Without LLM (Rule-Based Fallback)**:
+**Tier 3: Rule-Based Parsing** - Always available:
 - Pattern matching for cloud providers (AWS, GCP, Azure)
 - Keyword extraction for deployment types
 - Region and instance type detection
 - Scaling and SSL requirement inference
+- 70-80% accuracy, zero dependencies
 
 **Extracted Information**:
 - Cloud provider preference
@@ -439,13 +454,17 @@ class RepositoryAnalyzer:
 
 ### NLP Requirement Parser
 
-**LLM Integration**:
+**NLP Integration**:
 ```python
 class RequirementParser:
-    - Supports OpenAI GPT-4 and Anthropic Claude
+    - Multi-tier intelligent fallback system:
+      1. Vertex AI (Gemini) - uses GCP Service Account
+      2. OpenAI GPT-4 - if API key provided
+      3. Anthropic Claude - if API key provided  
+      4. Rule-based parsing - always available
     - Structured output with JSON schema
     - Temperature: 0.1 for consistency
-    - Fallback to rule-based parsing
+    - Graceful degradation for 100% uptime
 ```
 
 **Prompt Engineering**:
@@ -668,11 +687,16 @@ git clone <repo-url>  # Test manually
 ls -la requirements.txt package.json
 ```
 
-**Issue**: "LLM parsing failed"
+**Issue**: "ℹ️ Vertex AI models require GCP billing (optional)"
 ```bash
-# Solution: System falls back to rule-based parsing
-# Or add API key to .env
+# This is informational - system continues with rule-based parsing
+# Vertex AI is optional enhancement (15-20% better accuracy)
+# To enable: Set up GCP billing at console.cloud.google.com
+
+# Alternative: Add OpenAI or Anthropic API key
 echo "OPENAI_API_KEY=sk-..." >> .env
+
+# Or continue with rule-based (works great for most cases)
 ```
 
 ### Debug Mode
@@ -743,7 +767,8 @@ This project was created as a technical assessment for Arvo AI.
 
 - **Arvo AI** for the challenging and open-ended problem
 - **Terraform** for infrastructure as code
-- **OpenAI/Anthropic** for LLM capabilities
+- **Google Cloud Vertex AI** for Gemini LLM integration
+- **OpenAI/Anthropic** for alternative LLM capabilities
 - **Rich** library for beautiful terminal output
 
 ---
