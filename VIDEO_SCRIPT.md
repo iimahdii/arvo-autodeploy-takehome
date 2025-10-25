@@ -9,7 +9,7 @@
 
 ---
 
-## Recommended Script (60 seconds)
+## Recommended Script - Option 1: Complete Flow (60 seconds)
 
 ### Opening (8 seconds)
 "Hi! I'm Mahdi, and this is AutoDeploy - an intelligent deployment system that takes any application and deploys it to the cloud using natural language."
@@ -28,9 +28,10 @@ python main.py deploy \
 
 "The system automatically:
 - Detects it's a Flask application with 60% confidence
-- Parses 'Deploy on GCP' to understand I want Google Cloud
+- Parses 'Deploy on GCP' using multi-tier NLP (Vertex AI, then fallback)
 - Chooses VM deployment for simplicity
-- Generates complete Terraform infrastructure"
+- Generates complete Terraform infrastructure
+- Fixes localhost URLs to use the deployed VM's IP"
 
 **[Point to output tables showing framework detection, requirements, infrastructure]**
 
@@ -48,12 +49,48 @@ python main.py deploy \
 ### Technical Depth (8 seconds)
 "This isn't just scripts - it has:
 - Weighted framework detection algorithm
-- LLM-based NLP with rule-based fallback
+- Multi-tier NLP: Vertex AI → OpenAI → Rule-based fallback
+- Automatic localhost-to-IP conversion (minimal intervention!)
 - Multi-cloud Terraform generation
 - Over 2,500 lines of production code"
 
 ### Closing (2 seconds)
 "End-to-end automation. Check the repo for the full implementation!"
+
+---
+
+## Recommended Script - Option 2: Feature-Focused (60 seconds)
+
+**This version emphasizes the technical depth and key requirements**
+
+### Opening (6 seconds)
+"Hi! I'm Mahdi. AutoDeploy is an intelligent deployment system with multi-tier NLP and automatic code adjustments."
+
+### Command + Analysis (12 seconds)
+"One command deploys to GCP:"
+```bash
+python main.py deploy --repo https://github.com/Arvo-AI/hello_world --description "Deploy on GCP"
+```
+"It detects Flask, parses natural language using Vertex AI with fallback, and chooses infrastructure."
+
+### Key Feature 1: Localhost Fixing (10 seconds)
+**[Screen: Show "Fixing localhost references..." output]**
+"Notice - it automatically finds localhost URLs in the code and replaces them with the deployed VM's IP. Minimal intervention requirement, fully automated!"
+
+### Key Feature 2: Intelligent Fallback (8 seconds)  
+"The NLP uses a 3-tier system: Vertex AI first, then OpenAI, then rule-based parsing. 100% uptime, zero single point of failure."
+
+### Working App (12 seconds)
+**[Screen: Browser showing deployed app]**
+"Here's the live deployment - fully working on GCP. Click the button... there's the response!"
+
+### Technical Depth (10 seconds)
+"This is production-grade: weighted framework detection, multi-cloud Terraform, OAuth 2.0 Service Account auth, intelligent infrastructure decisions. 2,500+ lines of code."
+
+### Closing (2 seconds)
+"Deep technical understanding, end-to-end automation. Check the repo!"
+
+---
 
 ## Visual Flow
 
@@ -61,8 +98,18 @@ python main.py deploy \
 2. **Analysis output** (show repository analysis table)
 3. **Requirements parsing** (show deployment requirements table)
 4. **Infrastructure strategy** (show infrastructure decisions)
-5. **Generated files** (briefly show terraform/ directory)
-6. **Architecture diagram** (optional - show README architecture)
+5. **Localhost fixing** (show "Fixing localhost references..." output) ⭐ KEY FEATURE
+6. **Terraform applying** (show resource creation)
+7. **Live app** (browser showing working deployment)
+
+## Optional: Show Localhost Fixing (If Time Allows)
+
+If you have extra seconds, this demonstrates the "minimal intervention" requirement:
+
+**[Screen: Show terminal output]**
+"Notice here - the system automatically found localhost URLs in the code and replaced them with the deployed VM's IP address. This is the 'minimal intervention' requirement in action!"
+
+**[Point to the line: "Fixing localhost references to use 34.44.7.160:5000..."]**
 
 ## Key Points to Emphasize (What Makes You Stand Out)
 
@@ -77,6 +124,9 @@ python main.py deploy \
 ✅ **Intelligent Analysis** - Framework detection, dependency parsing  
 ✅ **Smart Decisions** - Chooses deployment strategy automatically  
 ✅ **Multi-Cloud** - AWS, GCP, Azure support  
+✅ **Localhost Fixing** - Automatically replaces localhost URLs (key requirement!)  
+✅ **Multi-Tier Fallback** - Vertex AI → OpenAI → Rule-based (100% uptime)  
+✅ **Secure Auth** - Uses Service Account JSON (OAuth 2.0), not simple API Keys  
 
 ## Screen Recording Tips
 
@@ -204,7 +254,7 @@ Here's my submission:
 
 1. GitHub Repository: https://github.com/iimahdii/arvo-autodeploy-takehome
 2. Demo Video: [Your Loom Link]
-3. Live Deployment: http://104.154.195.40:5000 (deployed via the system)
+3. Live Deployment: http://35.232.180.200:5000 (deployed via the system)
 
 Project Overview:
 AutoDeploy is an intelligent deployment automation system that analyzes code repositories, 
@@ -213,9 +263,12 @@ applications end-to-end using Terraform.
 
 Key Features:
 - Automatic framework detection (11+ frameworks)
+- Multi-tier NLP with Vertex AI (Gemini), OpenAI, and rule-based fallback
 - Multi-cloud support (AWS, GCP, Azure)
+- Automatic localhost URL replacement (minimal intervention requirement)
 - Intelligent infrastructure decisions
 - Production-ready Terraform generation
+- Secure OAuth 2.0 authentication (Service Account)
 - 2,500+ lines of production code
 
 The system successfully deployed the Arvo hello_world Flask app to GCP with a single command.
