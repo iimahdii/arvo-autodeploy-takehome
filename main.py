@@ -26,6 +26,7 @@ from src.utils.validators import (
     validate_repository_source,
     validate_deployment_description
 )
+from src.utils.fancy_output import display_gradient_banner, display_tech_stack
 
 # Load environment variables
 load_dotenv()
@@ -35,17 +36,22 @@ logger = setup_logger('autodeploy')
 
 
 def display_banner():
-    """Display application banner"""
-    banner = """
-    ╔═══════════════════════════════════════════════════════════╗
-    ║                                                           ║
-    ║              🚀 AutoDeploy System v1.0                   ║
-    ║                                                           ║
-    ║     Automated Cloud Deployment from Natural Language     ║
-    ║                                                           ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """
-    console.print(Panel(banner, style="bold blue"))
+    """Display fancy application banner with gradient"""
+    try:
+        # Use fancy gradient banner
+        display_gradient_banner()
+    except Exception:
+        # Fallback to simple banner
+        banner = """
+        ╔═══════════════════════════════════════════════════════════╗
+        ║                                                           ║
+        ║              🚀 AutoDeploy System v1.0                   ║
+        ║                                                           ║
+        ║     Automated Cloud Deployment from Natural Language     ║
+        ║                                                           ║
+        ╚═══════════════════════════════════════════════════════════╝
+        """
+        console.print(Panel(banner, style="bold blue"))
 
 
 @click.group()

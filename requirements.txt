@@ -9,6 +9,7 @@ requests>=2.31.0
 click>=8.1.7
 rich>=13.7.0
 python-terraform>=0.10.1
+qrcode[pil]>=7.4.2  # QR code generation for fancy UX
 
 # Repository analysis
 toml>=0.10.2

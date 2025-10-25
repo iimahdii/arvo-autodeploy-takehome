@@ -17,6 +17,16 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
 from rich.table import Table
 
+# Import fancy output utilities
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils.fancy_output import (
+    celebrate_success,
+    display_qr_code,
+    display_clickable_link,
+    display_next_steps
+)
+
 
 class DeploymentOrchestrator:
     """Orchestrates the complete deployment process"""
@@ -697,32 +707,60 @@ echo "Deployment completed!"
             self.console.print(message)
     
     def _display_success(self, result: Dict):
-        """Display success message with deployment details"""
-        
-        self.console.print("\n")
-        self.console.print(Panel.fit(
-            "[bold green]🎉 Deployment Successful![/bold green]",
-            border_style="green"
-        ))
-        
-        # Create deployment info table
-        table = Table(title="Deployment Information", show_header=True)
-        table.add_column("Property", style="cyan")
-        table.add_column("Value", style="green")
+        """Display fancy success message with QR code and celebration"""
         
         deployment_info = result['deployment_info']
         
-        table.add_row("Status", "✓ Running")
-        table.add_row("Type", deployment_info.get('type', 'N/A'))
+        # Calculate deployment time (if tracked)
+        deployment_time = getattr(self, '_deployment_start_time', 0)
+        if deployment_time:
+            deployment_time = time.time() - deployment_time
+        else:
+            deployment_time = 120.0  # Default estimate
         
-        if 'instance_ip' in deployment_info:
-            table.add_row("Instance IP", deployment_info['instance_ip'])
+        # Get deployment URL
+        deployment_url = deployment_info.get('url', '')
+        cloud_provider = deployment_info.get('cloud_provider', 'gcp')
         
-        if 'url' in deployment_info:
-            table.add_row("Application URL", deployment_info['url'])
-        
-        table.add_row("Port", str(deployment_info.get('port', 'N/A')))
-        
-        self.console.print("\n")
-        self.console.print(table)
-        self.console.print("\n")
+        # Display fancy celebration with QR code
+        try:
+            celebrate_success(
+                deployment_url=deployment_url,
+                cloud_provider=cloud_provider,
+                deployment_time=deployment_time
+            )
+            
+            # Display clickable link
+            if deployment_url:
+                display_clickable_link(deployment_url, "🚀 Open Your App")
+            
+            # Display next steps
+            display_next_steps(deployment_url)
+            
+        except Exception as e:
+            # Fallback to simple display if fancy fails
+            self.console.print("\n")
+            self.console.print(Panel.fit(
+                "[bold green]🎉 Deployment Successful![/bold green]",
+                border_style="green"
+            ))
+            
+            # Create deployment info table (fallback)
+            table = Table(title="Deployment Information", show_header=True)
+            table.add_column("Property", style="cyan")
+            table.add_column("Value", style="green")
+            
+            table.add_row("Status", "✓ Running")
+            table.add_row("Type", deployment_info.get('type', 'N/A'))
+            
+            if 'instance_ip' in deployment_info:
+                table.add_row("Instance IP", deployment_info['instance_ip'])
+            
+            if 'url' in deployment_info:
+                table.add_row("Application URL", deployment_url)
+            
+            table.add_row("Port", str(deployment_info.get('port', 'N/A')))
+            
+            self.console.print("\n")
+            self.console.print(table)
+            self.console.print("\n")

@@ -31,6 +31,8 @@ AutoDeploy is a sophisticated backend system that automates the entire process o
 - **🐳 Automatic Containerization**: Creates optimized Dockerfiles when needed
 - **📊 Comprehensive Logging**: Detailed logs of every deployment step
 - **💰 Cost Estimation**: Provides monthly cost estimates before deployment
+- **📱 QR Code Generation**: Scan to access your deployed app instantly
+- **🎨 Modern Terminal UI**: Gradient banners, clickable links, and celebration animations
 
 ### Supported Deployment Strategies
 
