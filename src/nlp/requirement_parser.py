@@ -89,9 +89,15 @@ class RequirementParser:
             try:
                 return self._parse_with_llm(description, app_analysis)
             except Exception as e:
-                print(f"LLM parsing failed: {e}, falling back to rule-based parsing")
+                # Graceful fallback to rule-based parsing
+                if '404' in str(e) and 'billing' not in str(e).lower():
+                    print("ℹ️  Vertex AI models require GCP billing (optional). Using rule-based parsing.")
+                elif 'permission' in str(e).lower():
+                    print("ℹ️  LLM API permission issue. Using rule-based parsing.")
+                else:
+                    print(f"ℹ️  LLM unavailable: {str(e)[:100]}. Using rule-based parsing.")
         
-        # Fallback to rule-based parsing
+        # Fallback to rule-based parsing (always works)
         return self._parse_with_rules(description, app_analysis)
     
     def _parse_with_llm(self, description: str, app_analysis: Dict) -> DeploymentRequirements:
