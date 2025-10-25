@@ -16,6 +16,13 @@ try:
 except ImportError:
     VERTEX_AVAILABLE = False
 
+# Google Generative AI (AI Studio)
+try:
+    import google.generativeai as genai
+    GOOGLE_GENAI_AVAILABLE = True
+except ImportError:
+    GOOGLE_GENAI_AVAILABLE = False
+
 
 @dataclass
 class DeploymentRequirements:
@@ -54,6 +61,7 @@ class RequirementParser:
         self.openai_client = None
         self.anthropic_client = None
         self.vertex_model = None
+        self.google_genai_model = None
         
         # Initialize Vertex AI (Google Cloud) - PRIORITY if GCP credentials exist
         if VERTEX_AVAILABLE and os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
@@ -71,6 +79,15 @@ class RequirementParser:
             except Exception as e:
                 print(f"Vertex AI initialization failed: {e}")
         
+        # Initialize Google AI Studio (FREE tier, fast setup)
+        if GOOGLE_GENAI_AVAILABLE and os.getenv('GOOGLE_API_KEY'):
+            try:
+                genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+                self.google_genai_model = genai.GenerativeModel('gemini-pro')
+                print("✓ Google AI Studio initialized (model: gemini-pro)")
+            except Exception as e:
+                print(f"Google AI Studio initialization failed: {e}")
+        
         # Initialize OpenAI (fallback)
         if os.getenv('OPENAI_API_KEY'):
             self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
@@ -85,13 +102,13 @@ class RequirementParser:
         """Parse natural language deployment requirements"""
         
         # Try LLM-based parsing first (more accurate)
-        if self.vertex_model or self.openai_client or self.anthropic_client:
+        if self.vertex_model or self.google_genai_model or self.openai_client or self.anthropic_client:
             try:
                 return self._parse_with_llm(description, app_analysis)
             except Exception as e:
                 # Graceful fallback to rule-based parsing
                 if '404' in str(e) and 'billing' not in str(e).lower():
-                    print("ℹ️  Vertex AI models require GCP billing (optional). Using rule-based parsing.")
+                    print("ℹ️  Vertex AI models require Terms of Service acceptance. Using rule-based parsing.")
                 elif 'permission' in str(e).lower():
                     print("ℹ️  LLM API permission issue. Using rule-based parsing.")
                 else:
@@ -141,7 +158,7 @@ Rules:
 Return ONLY the JSON, no explanation."""
 
         try:
-            # Priority: Vertex AI (same cloud, cheaper, faster)
+            # Priority 1: Vertex AI (same cloud, cheaper, faster)
             if self.vertex_model:
                 response = self.vertex_model.generate_content(
                     prompt,
@@ -151,6 +168,17 @@ Return ONLY the JSON, no explanation."""
                     }
                 )
                 result = response.text.strip()
+            # Priority 2: Google AI Studio (free tier, fast setup)
+            elif self.google_genai_model:
+                response = self.google_genai_model.generate_content(
+                    prompt,
+                    generation_config={
+                        'temperature': 0.1,
+                        'max_output_tokens': 500,
+                    }
+                )
+                result = response.text.strip()
+            # Priority 3: OpenAI
             elif self.openai_client:
                 response = self.openai_client.chat.completions.create(
                     model="gpt-4o-mini",
