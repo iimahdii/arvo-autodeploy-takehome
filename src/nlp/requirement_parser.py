@@ -61,8 +61,13 @@ class RequirementParser:
                 gcp_project = os.getenv('GCP_PROJECT_ID', 'mahdi-mirhoseini')
                 gcp_region = os.getenv('GCP_REGION', 'us-central1')
                 vertexai.init(project=gcp_project, location=gcp_region)
-                self.vertex_model = GenerativeModel('gemini-1.5-flash')
-                print(f"✓ Vertex AI initialized (project: {gcp_project})")
+                # Try gemini-pro first (more widely available), fallback to gemini-1.5-flash
+                try:
+                    self.vertex_model = GenerativeModel('gemini-pro')
+                    print(f"✓ Vertex AI initialized (project: {gcp_project}, model: gemini-pro)")
+                except:
+                    self.vertex_model = GenerativeModel('gemini-1.5-flash-001')
+                    print(f"✓ Vertex AI initialized (project: {gcp_project}, model: gemini-1.5-flash)")
             except Exception as e:
                 print(f"Vertex AI initialization failed: {e}")
         

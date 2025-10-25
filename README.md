@@ -121,7 +121,10 @@ AutoDeploy is a sophisticated backend system that automates the entire process o
 - Terraform 1.0+
 - Docker (for containerized deployments)
 - Cloud provider credentials (AWS/GCP/Azure)
-- OpenAI or Anthropic API key (optional, for enhanced NLP)
+- **LLM API (Optional)**: System works with rule-based NLP by default
+  - Vertex AI (uses GCP credentials) - Recommended if using GCP
+  - OpenAI API key - For enhanced accuracy
+  - Anthropic API key - Alternative option
 
 ### Installation
 
