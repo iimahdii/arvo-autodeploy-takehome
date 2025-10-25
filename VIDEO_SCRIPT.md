@@ -111,6 +111,22 @@ If you have extra seconds, this demonstrates the "minimal intervention" requirem
 
 **[Point to the line: "Fixing localhost references to use 34.44.7.160:5000..."]**
 
+## 🔥 Pro Tip: Show the QR Code!
+
+**This will WOW the reviewers:**
+
+**[Screen: Show success output with QR code]**
+"And check this out - the system generates a QR code in the terminal! You can scan this with your phone to instantly access the deployed app. Modern UX!"
+
+**[Optional: Actually scan with phone and show it opening]**
+
+Why this is impressive:
+- ✅ Shows attention to UX details
+- ✅ Modern, unexpected feature
+- ✅ Practical (instant mobile access)
+- ✅ Demonstrates polish and care
+- ✅ Memorable for reviewers
+
 ## Key Points to Emphasize (What Makes You Stand Out)
 
 ### Must Show:
@@ -127,6 +143,8 @@ If you have extra seconds, this demonstrates the "minimal intervention" requirem
 ✅ **Localhost Fixing** - Automatically replaces localhost URLs (key requirement!)  
 ✅ **Multi-Tier Fallback** - Vertex AI → OpenAI → Rule-based (100% uptime)  
 ✅ **Secure Auth** - Uses Service Account JSON (OAuth 2.0), not simple API Keys  
+✅ **QR Code** - Scan deployed app with phone (modern UX!) 📱  
+✅ **Modern Terminal UI** - Gradient banners, clickable links, celebrations 🎨  
 
 ## Screen Recording Tips
 
