@@ -97,6 +97,29 @@ Priority Chain:
 
 **For production**: Enable Vertex AI for ~20% accuracy improvement at minimal cost.
 
+## Authentication Notes
+
+### ✅ Service Account vs API Key
+
+**Important**: This system uses **Service Account JSON Key** (OAuth 2.0), NOT simple API Keys.
+
+```bash
+# What we use: ✅
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+Type: OAuth 2.0 Service Account
+Security: High (recommended by Google)
+
+# What we DON'T use: ❌
+API_KEY=AIzaSyD...xyz123
+Type: Simple API Key
+Security: Low
+```
+
+**Impact of Organization Policy `iam.managed.disableServiceAccountApiKeyCreation`**:
+- ❌ Blocks: Creating new API Keys
+- ✅ Does NOT block: Service Account JSON Keys (what we use)
+- ✅ No action needed: System works perfectly with Service Account
+
 ## Troubleshooting
 
 ### Issue: "404 Model not found"
