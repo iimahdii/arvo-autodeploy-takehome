@@ -510,6 +510,24 @@ set -e
 
 echo "Starting application deployment..."
 
+# Wait for startup script to complete (wait for pip3)
+echo "Waiting for system dependencies to be ready..."
+MAX_WAIT=180  # 3 minutes max
+WAITED=0
+while ! command -v pip3 &> /dev/null; do
+    if [ $WAITED -ge $MAX_WAIT ]; then
+        echo "Timeout waiting for pip3 to be installed"
+        echo "Installing pip3 manually..."
+        sudo apt-get update && sudo apt-get install -y python3-pip
+        break
+    fi
+    echo "Waiting for pip3... ($WAITED seconds elapsed)"
+    sleep 10
+    WAITED=$((WAITED + 10))
+done
+
+echo "✓ System dependencies ready (pip3 available)"
+
 # Copy files from /tmp to /opt
 sudo mkdir -p /opt/app
 sudo cp -r /tmp/app/* /opt/app/
