@@ -8,6 +8,14 @@ from dataclasses import dataclass, asdict
 from openai import OpenAI
 from anthropic import Anthropic
 
+# Google Vertex AI
+try:
+    import vertexai
+    from vertexai.generative_models import GenerativeModel
+    VERTEX_AVAILABLE = True
+except ImportError:
+    VERTEX_AVAILABLE = False
+
 
 @dataclass
 class DeploymentRequirements:
@@ -45,19 +53,34 @@ class RequirementParser:
     def __init__(self):
         self.openai_client = None
         self.anthropic_client = None
+        self.vertex_model = None
         
-        # Initialize available LLM clients
+        # Initialize Vertex AI (Google Cloud) - PRIORITY if GCP credentials exist
+        if VERTEX_AVAILABLE and os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+            try:
+                gcp_project = os.getenv('GCP_PROJECT_ID', 'mahdi-mirhoseini')
+                gcp_region = os.getenv('GCP_REGION', 'us-central1')
+                vertexai.init(project=gcp_project, location=gcp_region)
+                self.vertex_model = GenerativeModel('gemini-1.5-flash')
+                print(f"✓ Vertex AI initialized (project: {gcp_project})")
+            except Exception as e:
+                print(f"Vertex AI initialization failed: {e}")
+        
+        # Initialize OpenAI (fallback)
         if os.getenv('OPENAI_API_KEY'):
             self.openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+            print("✓ OpenAI client initialized")
         
+        # Initialize Anthropic (fallback)
         if os.getenv('ANTHROPIC_API_KEY'):
             self.anthropic_client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+            print("✓ Anthropic client initialized")
     
     def parse(self, description: str, app_analysis: Dict) -> DeploymentRequirements:
         """Parse natural language deployment requirements"""
         
         # Try LLM-based parsing first (more accurate)
-        if self.openai_client or self.anthropic_client:
+        if self.vertex_model or self.openai_client or self.anthropic_client:
             try:
                 return self._parse_with_llm(description, app_analysis)
             except Exception as e:
@@ -107,7 +130,17 @@ Rules:
 Return ONLY the JSON, no explanation."""
 
         try:
-            if self.openai_client:
+            # Priority: Vertex AI (same cloud, cheaper, faster)
+            if self.vertex_model:
+                response = self.vertex_model.generate_content(
+                    prompt,
+                    generation_config={
+                        'temperature': 0.1,
+                        'max_output_tokens': 500,
+                    }
+                )
+                result = response.text.strip()
+            elif self.openai_client:
                 response = self.openai_client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[{"role": "user", "content": prompt}],
