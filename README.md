@@ -772,9 +772,3 @@ This project was created as a technical assessment for Arvo AI.
 - **Google Cloud Vertex AI** for Gemini LLM integration
 - **OpenAI/Anthropic** for alternative LLM capabilities
 - **Rich** library for beautiful terminal output
-
----
-
-**Built with ❤️ for the Arvo AI Technical Interview**
-
-*Demonstrating deep understanding of cloud infrastructure, deployment automation, and system design*
