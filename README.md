@@ -763,11 +763,10 @@ This is a technical assessment project, but feedback is welcome:
 
 ## 📄 License
 
-This project was created as a technical assessment for Arvo AI.
+This project was created as an assessment for Mahdi Project.
 
 ## 🙏 Acknowledgments
 
-- **Arvo AI** for the challenging and open-ended problem
 - **Terraform** for infrastructure as code
 - **Google Cloud Vertex AI** for Gemini LLM integration
 - **OpenAI/Anthropic** for alternative LLM capabilities
